@@ -35,3 +35,9 @@
   top: 30%;
 }
 
+.pm-suggestion-content.no-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  --icon-size: var(--icon-xs);
+}

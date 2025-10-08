@@ -8,6 +8,13 @@ interface PluginInfo {
   enabled: boolean
 }
 
+interface SearchAction {
+  isSearchAction: true
+  query: string
+}
+
+type SuggestionItem = PluginInfo | SearchAction;
+
 export default class PluginManagerPlugin extends obsidian.Plugin {
   pluginRepoCache: { [key: string]: string } = {};
 
@@ -31,7 +38,7 @@ export default class PluginManagerPlugin extends obsidian.Plugin {
   }
 }
 
-class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
+class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
   plugin: PluginManagerPlugin;
 
   constructor(app: obsidian.App, plugin: PluginManagerPlugin) {
@@ -41,7 +48,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
 
     const modIcons = obsidian.Platform.isMacOS ? '⌘/⌃' : '⌃';
     this.setInstructions([
-      { command: '↵', purpose: 'enable/disable' },
+      { command: '↵', purpose: 'enable/disable/search' },
       { command: `${modIcons} ↵`, purpose: 'open settings' },
       { command: `${modIcons} D`, purpose: 'uninstall' },
       { command: `${modIcons} C`, purpose: 'copy ID' },
@@ -60,7 +67,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
     const enterHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.openPluginSettings(selectedItem.item);
       }
       return false;
@@ -69,7 +76,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
     const dHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.uninstallPlugin(selectedItem.item);
       }
       return false;
@@ -78,7 +85,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
     const cHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.copyPluginId(selectedItem.item);
         this.reopenModal();
       }
@@ -88,7 +95,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
     const oHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.openPluginRepository(selectedItem.item);
         this.reopenModal();
       }
@@ -101,6 +108,17 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
       this.scope.register([mod], 'c', cHandler);
       this.scope.register([mod], 'o', oHandler);
     }
+
+    const originalSetSuggestions = chooser.setSuggestions.bind(chooser);
+    chooser.setSuggestions = (suggestions: obsidian.FuzzyMatch<SuggestionItem>[]) => {
+      const query = this.inputEl.value;
+      if ((!suggestions || suggestions.length === 0) && query) {
+        const searchAction: SearchAction = { isSearchAction: true, query };
+        const fakeMatch: obsidian.FuzzyMatch<SearchAction> = { item: searchAction, match: { score: 1, matches: [] } };
+        return originalSetSuggestions([fakeMatch]);
+      }
+      return originalSetSuggestions(suggestions);
+    };
   }
 
   updateCounter(ctaDiv: HTMLElement): void {
@@ -133,50 +151,54 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
     return plugins;
   }
 
-  getItemText(plugin: PluginInfo): string {
-    return plugin.name;
+  getItemText(item: SuggestionItem): string {
+    if ('isSearchAction' in item) {
+      return `Search "${item.query}" in community plugins`;
+    }
+    return item.name;
   }
 
-  renderSuggestion(item: any, el: HTMLElement): void {
+  renderSuggestion(item: obsidian.FuzzyMatch<SuggestionItem>, el: HTMLElement): void {
     el.addClass('pm-suggestion-item');
+    const suggestion = item.item;
 
-    const plugin = item.item as PluginInfo;
-
-    const contentDiv = el.createDiv({ cls: 'pm-suggestion-content' });
-
-    const textDiv = contentDiv.createDiv({ cls: 'pm-suggestion-text' });
-
-    const titleDiv = textDiv.createDiv({ cls: 'pm-suggestion-title' });
-
-    const nameSpan = titleDiv.createSpan({ cls: 'plugin-name' });
-    nameSpan.setText(plugin.name);
-    if (!plugin.enabled) {
-      nameSpan.addClass('plugin-disabled');
+    if ('isSearchAction' in suggestion) {
+      const contentDiv = el.createDiv({ cls: 'pm-suggestion-content no-result' });
+      obsidian.setIcon(contentDiv, 'search');
+      contentDiv.createSpan({ cls: 'pm-suggestion-title' }).setText(`Search "${suggestion.query}" in community plugins`);
+    } else {
+      const plugin = suggestion;
+      const contentDiv = el.createDiv({ cls: 'pm-suggestion-content' });
+      const textDiv = contentDiv.createDiv({ cls: 'pm-suggestion-text' });
+      const titleDiv = textDiv.createDiv({ cls: 'pm-suggestion-title' });
+      const nameSpan = titleDiv.createSpan({ cls: 'plugin-name' });
+      nameSpan.setText(plugin.name);
+      if (!plugin.enabled) {
+        nameSpan.addClass('plugin-disabled');
+      }
+      const versionSpan = titleDiv.createSpan({ cls: 'pm-suggestion-note plugin-version' });
+      versionSpan.setText(`v${plugin.manifest.version}`);
+      const descriptionDiv = textDiv.createDiv({ cls: 'pm-suggestion-note plugin-desc' });
+      descriptionDiv.setText(plugin.manifest.description || '');
     }
-
-    const versionSpan = titleDiv.createSpan({ cls: 'pm-suggestion-note plugin-version' });
-    versionSpan.setText(`v${plugin.manifest.version}`);
-
-    const descriptionDiv = textDiv.createDiv({ cls: 'pm-suggestion-note plugin-desc' });
-    descriptionDiv.setText(plugin.manifest.description || '');
   }
 
-  onChooseSuggestion(item: any, evt: MouseEvent | KeyboardEvent): void {
-    const plugin = item.item as PluginInfo;
+  onChooseSuggestion(item: obsidian.FuzzyMatch<SuggestionItem>, evt: MouseEvent | KeyboardEvent): void {
+    const suggestion = item.item;
 
-    // Check for modifier keys
-    const isCtrl = evt.ctrlKey || (obsidian.Platform.isMacOS && evt.metaKey);
-
-    if (isCtrl) {
-      // All ctrl/cmd actions are handled by scope.register now.
-      // This is just a safeguard.
-      return;
+    if ('isSearchAction' in suggestion) {
+      this.close();
+      window.open(`obsidian://show-plugin?id=${encodeURIComponent(suggestion.query)}`);
+    } else {
+      const plugin = suggestion;
+      const isCtrl = evt.ctrlKey || (obsidian.Platform.isMacOS && evt.metaKey);
+      if (isCtrl) {
+        return;
+      }
+      this.togglePlugin(plugin).then(() => {
+        this.reopenModal();
+      });
     }
-
-    // Toggle enable/disable - reopen modal to refresh
-    this.togglePlugin(plugin).then(() => {
-      this.reopenModal();
-    });
   }
 
   reopenModal(): void {
