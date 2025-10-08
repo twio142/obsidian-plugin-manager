@@ -38,18 +38,68 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
     super(app);
     this.plugin = plugin;
     this.setPlaceholder('Type to search plugins...');
-    const mod = obsidian.Platform.isMacOS ? '⌘' : '⌃';
+
+    const modIcons = obsidian.Platform.isMacOS ? '⌘/⌃' : '⌃';
     this.setInstructions([
       { command: '↵', purpose: 'enable/disable' },
-      { command: `${mod} ↵`, purpose: 'open settings' },
-      { command: `⌃ D`, purpose: 'uninstall' },
-      { command: `⌃ C`, purpose: 'copy ID' },
-      { command: `⌃ O`, purpose: 'open repository' },
+      { command: `${modIcons} ↵`, purpose: 'open settings' },
+      { command: `${modIcons} D`, purpose: 'uninstall' },
+      { command: `${modIcons} C`, purpose: 'copy ID' },
+      { command: `${modIcons} O`, purpose: 'open repository' },
     ]);
+
     this.containerEl.addClass('pm-suggestion-modal');
     const inputEl = this.inputEl;
     if (inputEl.nextElementSibling instanceof HTMLElement) {
       this.updateCounter(inputEl.nextElementSibling);
+    }
+
+    const chooser = (this as any).chooser;
+    const modifiers: obsidian.Modifier[] = obsidian.Platform.isMacOS ? ['Meta', 'Ctrl'] : ['Ctrl'];
+
+    const enterHandler = (evt: KeyboardEvent) => {
+      evt.preventDefault();
+      const selectedItem = chooser.values[chooser.selectedItem];
+      if (selectedItem) {
+        this.openPluginSettings(selectedItem.item);
+      }
+      return false;
+    };
+
+    const dHandler = (evt: KeyboardEvent) => {
+      evt.preventDefault();
+      const selectedItem = chooser.values[chooser.selectedItem];
+      if (selectedItem) {
+        this.uninstallPlugin(selectedItem.item);
+      }
+      return false;
+    };
+
+    const cHandler = (evt: KeyboardEvent) => {
+      evt.preventDefault();
+      const selectedItem = chooser.values[chooser.selectedItem];
+      if (selectedItem) {
+        this.copyPluginId(selectedItem.item);
+        this.reopenModal();
+      }
+      return false;
+    };
+
+    const oHandler = (evt: KeyboardEvent) => {
+      evt.preventDefault();
+      const selectedItem = chooser.values[chooser.selectedItem];
+      if (selectedItem) {
+        this.openPluginRepository(selectedItem.item);
+        this.reopenModal();
+      }
+      return false;
+    };
+
+    for (const mod of modifiers) {
+      this.scope.register([mod], 'Enter', enterHandler);
+      this.scope.register([mod], 'd', dHandler);
+      this.scope.register([mod], 'c', cHandler);
+      this.scope.register([mod], 'o', oHandler);
     }
   }
 
@@ -116,30 +166,17 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
 
     // Check for modifier keys
     const isCtrl = evt.ctrlKey || (obsidian.Platform.isMacOS && evt.metaKey);
-    const isD = evt instanceof KeyboardEvent && evt.key === 'd';
-    const isC = evt instanceof KeyboardEvent && evt.key === 'c';
-    const isO = evt instanceof KeyboardEvent && evt.key === 'o';
 
-    if (isCtrl && isD) {
-      // Uninstall plugin - this will close and reopen the modal
-      this.uninstallPlugin(plugin);
-    } else if (isCtrl && isC) {
-      // Copy plugin ID - keep modal open by reopening it
-      this.copyPluginId(plugin);
-      this.reopenModal();
-    } else if (isCtrl && isO) {
-      // Open plugin repository - keep modal open by reopening it
-      this.openPluginRepository(plugin);
-      this.reopenModal();
-    } else if (isCtrl) {
-      // Open plugin settings - this will close the modal
-      this.openPluginSettings(plugin);
-    } else {
-      // Toggle enable/disable - reopen modal to refresh
-      this.togglePlugin(plugin).then(() => {
-        this.reopenModal();
-      });
+    if (isCtrl) {
+      // All ctrl/cmd actions are handled by scope.register now.
+      // This is just a safeguard.
+      return;
     }
+
+    // Toggle enable/disable - reopen modal to refresh
+    this.togglePlugin(plugin).then(() => {
+      this.reopenModal();
+    });
   }
 
   reopenModal(): void {
