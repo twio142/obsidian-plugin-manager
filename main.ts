@@ -9,19 +9,21 @@ interface PluginInfo {
 }
 
 export default class PluginManagerPlugin extends obsidian.Plugin {
+  pluginRepoCache: { [key: string]: string } = {};
+
   async onload() {
     // Add command to open plugin manager
     this.addCommand({
       id: 'search',
       name: 'Search plugins',
       callback: () => {
-        new PluginManagerModal(this.app).open();
+        new PluginManagerModal(this.app, this).open();
       },
     });
 
     // Add ribbon icon
     this.addRibbonIcon('puzzle', 'Plugin manager', () => {
-      new PluginManagerModal(this.app).open();
+      new PluginManagerModal(this.app, this).open();
     });
   }
 
@@ -30,8 +32,11 @@ export default class PluginManagerPlugin extends obsidian.Plugin {
 }
 
 class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
-  constructor(app: obsidian.App) {
+  plugin: PluginManagerPlugin;
+
+  constructor(app: obsidian.App, plugin: PluginManagerPlugin) {
     super(app);
+    this.plugin = plugin;
     this.setPlaceholder('Type to search plugins...');
     const mod = obsidian.Platform.isMacOS ? '⌘' : '⌃';
     this.setInstructions([
@@ -140,7 +145,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
   reopenModal(): void {
     // Close and reopen the modal to refresh the list
     setTimeout(() => {
-      new PluginManagerModal(this.app).open();
+      new PluginManagerModal(this.app, this.plugin).open();
     }, 50);
   }
 
@@ -183,7 +188,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
       // Close and reopen the modal to refresh the list
       this.close();
       setTimeout(() => {
-        new PluginManagerModal(this.app).open();
+        new PluginManagerModal(this.app, this.plugin).open();
       }, 100);
     } catch (error) {
       new obsidian.Notice(`Error uninstalling plugin: ${error.message}`);
@@ -210,24 +215,32 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
   }
 
   openPluginRepository(plugin: PluginInfo): void {
-    const manifest = plugin.manifest;
-    let repoUrl = '';
+    const open = (repo: string | undefined): void => {
+      if (repo) {
+        window.open(`https://github.com/${repo}`, '_blank');
+      } else {
+        new obsidian.Notice('Repository URL not found for this plugin');
+      }
+    };
 
-    // Try to construct repository URL from manifest
-    if (manifest.authorUrl) {
-      repoUrl = manifest.authorUrl;
-    }
-
-    if (!repoUrl) {
-      // Try to construct from plugin ID
-      repoUrl = `https://github.com/search?q=${encodeURIComponent(plugin.id)}`;
-    }
-
-    if (repoUrl) {
-      window.open(repoUrl, '_blank');
-      new obsidian.Notice(`Opening repository: ${plugin.name}`);
+    const apiUrl = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json';
+    if (Object.keys(this.plugin.pluginRepoCache).length === 0) {
+      fetch(apiUrl).then(response => response.json()).then((data: any[]) => {
+        let found = false;
+        for (const p of data) {
+          this.plugin.pluginRepoCache[p.id] = p.repo;
+          if (p.id === plugin.id) {
+            open(p.repo);
+            found = true;
+          }
+        }
+        if (!found) {
+          new obsidian.Notice('Plugin not found in community plugins list');
+        }
+      });
     } else {
-      new obsidian.Notice('Repository URL not found');
+      const repo = this.plugin.pluginRepoCache[plugin.id];
+      open(repo);
     }
   }
 }
