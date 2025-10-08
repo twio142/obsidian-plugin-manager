@@ -12,15 +12,15 @@ export default class PluginManagerPlugin extends obsidian.Plugin {
   async onload() {
     // Add command to open plugin manager
     this.addCommand({
-      id: 'open-plugin-manager',
-      name: 'Open Plugin Manager',
+      id: 'search',
+      name: 'Search plugins',
       callback: () => {
         new PluginManagerModal(this.app).open();
       },
     });
 
     // Add ribbon icon
-    this.addRibbonIcon('puzzle', 'Plugin Manager', () => {
+    this.addRibbonIcon('puzzle', 'Plugin manager', () => {
       new PluginManagerModal(this.app).open();
     });
   }
@@ -33,21 +33,26 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
   constructor(app: obsidian.App) {
     super(app);
     this.setPlaceholder('Type to search plugins...');
+    const mod = obsidian.Platform.isMacOS ? '⌘' : '⌃';
     this.setInstructions([
-      { command: '↵', purpose: 'toggle enable/disable' },
-      { command: 'ctrl ↵', purpose: 'open settings' },
-      { command: 'ctrl d', purpose: 'uninstall' },
-      { command: 'ctrl c', purpose: 'copy ID' },
-      { command: 'ctrl o', purpose: 'open repository' },
+      { command: '↵', purpose: 'enable/disable' },
+      { command: `${mod} ↵`, purpose: 'open settings' },
+      { command: `⌃ D`, purpose: 'uninstall' },
+      { command: `⌃ C`, purpose: 'copy ID' },
+      { command: `⌃ O`, purpose: 'open repository' },
     ]);
-    this.updateTitle();
+    this.containerEl.addClass('pm-suggestion-modal');
+    const inputEl = this.inputEl;
+    if (inputEl.nextElementSibling instanceof HTMLElement) {
+      this.updateCounter(inputEl.nextElementSibling);
+    }
   }
 
-  updateTitle(): void {
+  updateCounter(ctaDiv: HTMLElement): void {
     const items = this.getItems();
     const enabledCount = items.filter(p => p.enabled).length;
     const totalCount = items.length;
-    this.setPlaceholder(`Type to search plugins... (${enabledCount} / ${totalCount})`);
+    ctaDiv.setText(`${enabledCount} / ${totalCount}`);
   }
 
   getItems(): PluginInfo[] {
@@ -78,32 +83,34 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<PluginInfo> {
   }
 
   renderSuggestion(item: any, el: HTMLElement): void {
+    el.addClass('pm-suggestion-item');
+
     const plugin = item.item as PluginInfo;
 
-    // Create main content div
-    const contentDiv = el.createDiv({ cls: 'suggestion-content' });
+    const contentDiv = el.createDiv({ cls: 'pm-suggestion-content' });
 
-    // Add icon
-    const iconDiv = contentDiv.createDiv({ cls: 'suggestion-icon' });
-    obsidian.setIcon(iconDiv, plugin.enabled ? 'check-circle' : 'x-circle');
+    const textDiv = contentDiv.createDiv({ cls: 'pm-suggestion-text' });
 
-    // Add text container
-    const textDiv = contentDiv.createDiv({ cls: 'suggestion-text' });
+    const titleDiv = textDiv.createDiv({ cls: 'pm-suggestion-title' });
 
-    // Add title
-    const titleDiv = textDiv.createDiv({ cls: 'suggestion-title' });
-    titleDiv.setText(plugin.name);
+    const nameSpan = titleDiv.createSpan({ cls: 'plugin-name' });
+    nameSpan.setText(plugin.name);
+    if (!plugin.enabled) {
+      nameSpan.addClass('plugin-disabled');
+    }
 
-    // Add subtitle with version
-    const subtitleDiv = textDiv.createDiv({ cls: 'suggestion-note' });
-    subtitleDiv.setText(`v${plugin.manifest.version}`);
+    const versionSpan = titleDiv.createSpan({ cls: 'pm-suggestion-note plugin-version' });
+    versionSpan.setText(`v${plugin.manifest.version}`);
+
+    const descriptionDiv = textDiv.createDiv({ cls: 'pm-suggestion-note plugin-desc' });
+    descriptionDiv.setText(plugin.manifest.description || '');
   }
 
   onChooseSuggestion(item: any, evt: MouseEvent | KeyboardEvent): void {
     const plugin = item.item as PluginInfo;
 
     // Check for modifier keys
-    const isCtrl = evt.ctrlKey || evt.metaKey;
+    const isCtrl = evt.ctrlKey || (obsidian.Platform.isMacOS && evt.metaKey);
     const isD = evt instanceof KeyboardEvent && evt.key === 'd';
     const isC = evt instanceof KeyboardEvent && evt.key === 'c';
     const isO = evt instanceof KeyboardEvent && evt.key === 'o';

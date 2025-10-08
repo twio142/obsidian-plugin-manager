@@ -1,0 +1,37 @@
+.pm-suggestion-item {
+  width: 100%;
+  position: relative;
+}
+
+.pm-suggestion-item .pm-suggestion-title {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.pm-suggestion-item .pm-suggestion-note {
+  font-size: smaller;
+}
+
+.pm-suggestion-item .pm-suggestion-note.plugin-version {
+  color: var(--text-faint);
+  padding-left: 10px;
+}
+
+.pm-suggestion-item .pm-suggestion-note.plugin-desc {
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pm-suggestion-item .plugin-disabled {
+  color: var(--text-faint);
+}
+
+.pm-suggestion-modal .prompt-input-cta {
+  color: var(--text-muted);
+  position: absolute;
+  right: 60px;
+  top: 30%;
+}
+
