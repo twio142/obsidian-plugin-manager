@@ -16,7 +16,8 @@ interface SearchAction {
 type SuggestionItem = PluginInfo | SearchAction;
 
 export default class PluginManagerPlugin extends obsidian.Plugin {
-  pluginRepoCache: { [key: string]: string } = {};
+  pluginRepoCache: { [key: string]: string } | undefined;
+  bratPluginCache: { [key: string]: string } | undefined;
 
   async onload() {
     // Add command to open plugin manager
@@ -282,9 +283,39 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       }
     };
 
+    const brat = (this.app as any).plugins.plugins['obsidian42-brat'];
+    if (brat) {
+      let found = false;
+      if (this.plugin.bratPluginCache) {
+        const repo = this.plugin.bratPluginCache[plugin.id];
+        if (repo) {
+          open(repo);
+          found = true;
+        }
+      } else {
+        this.plugin.bratPluginCache = {};
+        const { pluginList, pluginSublistFrozenVersion } = brat.settings;
+        for (const i in pluginList) {
+          const p = pluginList[i];
+          this.plugin.bratPluginCache[p] = pluginSublistFrozenVersion[i]?.repo;
+          if (p === plugin.id) {
+            open(this.plugin.bratPluginCache[plugin.id]);
+            found = true;
+          }
+        }
+      }
+      if (found) {
+        return;
+      }
+    }
+
     const apiUrl = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json';
-    if (Object.keys(this.plugin.pluginRepoCache).length === 0) {
+    if (this.plugin.pluginRepoCache) {
+      const repo = this.plugin.pluginRepoCache[plugin.id];
+      open(repo);
+    } else {
       fetch(apiUrl).then(response => response.json()).then((data: any[]) => {
+        this.plugin.pluginRepoCache = {};
         let found = false;
         for (const p of data) {
           this.plugin.pluginRepoCache[p.id] = p.repo;
@@ -297,9 +328,6 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
           new obsidian.Notice('Plugin not found in community plugins list');
         }
       });
-    } else {
-      const repo = this.plugin.pluginRepoCache[plugin.id];
-      open(repo);
     }
   }
 }
