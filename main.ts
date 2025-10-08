@@ -1,4 +1,4 @@
-import { App, FuzzySuggestModal, Plugin, PluginManifest, Notice, Platform } from 'obsidian';
+import { App, FuzzySuggestModal, Plugin, PluginManifest, Notice, Platform, setIcon } from 'obsidian';
 
 interface PluginInfo {
 	id: string;
@@ -39,6 +39,14 @@ class PluginManagerModal extends FuzzySuggestModal<PluginInfo> {
 			{ command: 'ctrl c', purpose: 'copy ID' },
 			{ command: 'ctrl o', purpose: 'open repository' },
 		]);
+		this.updateTitle();
+	}
+
+	updateTitle(): void {
+		const items = this.getItems();
+		const enabledCount = items.filter(p => p.enabled).length;
+		const totalCount = items.length;
+		this.setPlaceholder(`Type to search plugins... (${enabledCount} / ${totalCount})`);
 	}
 
 	getItems(): PluginInfo[] {
@@ -47,7 +55,6 @@ class PluginManagerModal extends FuzzySuggestModal<PluginInfo> {
 		
 		// Get all installed plugins
 		const allPlugins = app.plugins.manifests;
-		const enabledPlugins = app.plugins.enabledPlugins;
 
 		for (const pluginId in allPlugins) {
 			const manifest = allPlugins[pluginId];
@@ -55,7 +62,7 @@ class PluginManagerModal extends FuzzySuggestModal<PluginInfo> {
 				id: pluginId,
 				name: manifest.name,
 				manifest: manifest,
-				enabled: enabledPlugins.has(pluginId)
+				enabled: !!app.plugins.plugins[pluginId]
 			});
 		}
 
@@ -66,11 +73,34 @@ class PluginManagerModal extends FuzzySuggestModal<PluginInfo> {
 	}
 
 	getItemText(plugin: PluginInfo): string {
-		const status = plugin.enabled ? '✓' : '✗';
-		return `${status} ${plugin.name}`;
+		return plugin.name;
 	}
 
-	onChooseItem(plugin: PluginInfo, evt: MouseEvent | KeyboardEvent): void {
+	renderSuggestion(item: any, el: HTMLElement): void {
+		const plugin = item.item as PluginInfo;
+		
+		// Create main content div
+		const contentDiv = el.createDiv({ cls: 'suggestion-content' });
+		
+		// Add icon
+		const iconDiv = contentDiv.createDiv({ cls: 'suggestion-icon' });
+		setIcon(iconDiv, plugin.enabled ? 'check-circle' : 'x-circle');
+		
+		// Add text container
+		const textDiv = contentDiv.createDiv({ cls: 'suggestion-text' });
+		
+		// Add title
+		const titleDiv = textDiv.createDiv({ cls: 'suggestion-title' });
+		titleDiv.setText(plugin.name);
+		
+		// Add subtitle with version
+		const subtitleDiv = textDiv.createDiv({ cls: 'suggestion-note' });
+		subtitleDiv.setText(`v${plugin.manifest.version}`);
+	}
+
+	onChooseSuggestion(item: any, evt: MouseEvent | KeyboardEvent): void {
+		const plugin = item.item as PluginInfo;
+		
 		// Check for modifier keys
 		const isCtrl = evt.ctrlKey || evt.metaKey;
 		const isD = evt instanceof KeyboardEvent && evt.key === 'd';
@@ -78,21 +108,37 @@ class PluginManagerModal extends FuzzySuggestModal<PluginInfo> {
 		const isO = evt instanceof KeyboardEvent && evt.key === 'o';
 
 		if (isCtrl && isD) {
-			// Uninstall plugin
+			// Uninstall plugin - this will close and reopen the modal
 			this.uninstallPlugin(plugin);
 		} else if (isCtrl && isC) {
-			// Copy plugin ID
+			// Copy plugin ID - keep modal open by reopening it
 			this.copyPluginId(plugin);
+			this.reopenModal();
 		} else if (isCtrl && isO) {
-			// Open plugin repository
+			// Open plugin repository - keep modal open by reopening it
 			this.openPluginRepository(plugin);
+			this.reopenModal();
 		} else if (isCtrl) {
-			// Open plugin settings
+			// Open plugin settings - this will close the modal
 			this.openPluginSettings(plugin);
 		} else {
-			// Toggle enable/disable
-			this.togglePlugin(plugin);
+			// Toggle enable/disable - reopen modal to refresh
+			this.togglePlugin(plugin).then(() => {
+				this.reopenModal();
+			});
 		}
+	}
+
+	reopenModal(): void {
+		// Close and reopen the modal to refresh the list
+		setTimeout(() => {
+			new PluginManagerModal(this.app).open();
+		}, 50);
+	}
+
+	onChooseItem(plugin: PluginInfo, evt: MouseEvent | KeyboardEvent): void {
+		// This method is called by the default implementation but we override onChooseSuggestion
+		// Keep it for compatibility but the logic is now in onChooseSuggestion
 	}
 
 	async togglePlugin(plugin: PluginInfo): Promise<void> {
