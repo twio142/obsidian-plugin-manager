@@ -197,15 +197,26 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       if (isCtrl) {
         return;
       }
-      this.openPluginSettings(suggestion);
+      const settingsOpened = this.openPluginSettings(suggestion);
+      if (!settingsOpened) {
+        this.reopenModal();
+      }
     }
   }
 
   reopenModal(): void {
-    // Close and reopen the modal to refresh the list
+    const query = this.inputEl.value;
+    const cursor = this.inputEl.selectionStart;
+
     setTimeout(() => {
-      new PluginManagerModal(this.app, this.plugin).open();
-    }, 50);
+      const newModal = new PluginManagerModal(this.app, this.plugin);
+      newModal.open();
+      newModal.inputEl.value = query;
+      if (cursor !== null) {
+        newModal.inputEl.selectionStart = newModal.inputEl.selectionEnd = cursor;
+      }
+      newModal.inputEl.dispatchEvent(new Event('input'));
+    }, 10);
   }
 
   onChooseItem(): void {
@@ -254,11 +265,11 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     }
   }
 
-  openPluginSettings(plugin: PluginInfo): void {
+  openPluginSettings(plugin: PluginInfo): boolean {
     const app = this.app as any;
 
     if (!app.setting.pluginTabs.find((tab: any) => tab.id === plugin.id)) {
-      return; // Plugin has no settings page
+      return false; // Plugin has no settings page
     }
 
     // Close the modal first
@@ -267,6 +278,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     // Open settings and navigate to the plugin
     app.setting.open();
     app.setting.openTabById(plugin.id);
+    return true;
   }
 
   copyPluginId(plugin: PluginInfo): void {
