@@ -49,8 +49,8 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
 
     const modIcons = obsidian.Platform.isMacOS ? '⌘/⌃' : '⌃';
     this.setInstructions([
-      { command: '↵', purpose: 'enable/disable/search' },
-      { command: `${modIcons} ↵`, purpose: 'open settings' },
+      { command: '↵', purpose: 'open settings/search' },
+      { command: `${modIcons} ↵`, purpose: 'enable/disable' },
       { command: `${modIcons} D`, purpose: 'uninstall' },
       { command: `${modIcons} C`, purpose: 'copy ID' },
       { command: `${modIcons} O`, purpose: 'open repository' },
@@ -69,7 +69,9 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
       if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
-        this.openPluginSettings(selectedItem.item);
+        this.togglePlugin(selectedItem.item).then(() => {
+          this.reopenModal();
+        });
       }
       return false;
     };
@@ -191,14 +193,11 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       this.close();
       window.open(`obsidian://show-plugin?id=${encodeURIComponent(suggestion.query)}`);
     } else {
-      const plugin = suggestion;
       const isCtrl = evt.ctrlKey || (obsidian.Platform.isMacOS && evt.metaKey);
       if (isCtrl) {
         return;
       }
-      this.togglePlugin(plugin).then(() => {
-        this.reopenModal();
-      });
+      this.openPluginSettings(suggestion);
     }
   }
 
@@ -257,6 +256,10 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
 
   openPluginSettings(plugin: PluginInfo): void {
     const app = this.app as any;
+
+    if (!app.setting.pluginTabs.find((tab: any) => tab.id === plugin.id)) {
+      return; // Plugin has no settings page
+    }
 
     // Close the modal first
     this.close();
