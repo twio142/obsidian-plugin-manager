@@ -39,6 +39,46 @@ export default class PluginManagerPlugin extends obsidian.Plugin {
   }
 }
 
+function confirm(app: obsidian.App, title: string, message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const modal = new (class extends obsidian.Modal {
+      private didSubmit = false;
+
+      constructor(app: obsidian.App) {
+        super(app);
+        this.setTitle(title);
+      }
+
+      onOpen() {
+        this.contentEl.createEl('p', { text: message });
+        new obsidian.Setting(this.contentEl)
+          .addButton(btn =>
+            btn.setButtonText('Cancel').onClick(() => {
+              this.didSubmit = true;
+              this.close();
+              resolve(false);
+            }),
+          )
+          .addButton(btn =>
+            btn.setButtonText('Confirm').setCta().onClick(() => {
+              this.didSubmit = true;
+              this.close();
+              resolve(true);
+            }),
+          );
+      }
+
+      onClose() {
+        this.contentEl.empty();
+        if (!this.didSubmit) {
+          resolve(false);
+        }
+      }
+    })(app);
+    modal.open();
+  });
+}
+
 class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
   plugin: PluginManagerPlugin;
 
@@ -81,9 +121,11 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
       if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
-        this.uninstallPlugin(selectedItem.item).then(() => {
-          this.reopenModal();
+        this.uninstallPlugin(selectedItem.item).then((ok) => {
+          if (!ok)
+            return;
           this.close();
+          this.reopenModal();
         });
       }
       return false;
@@ -244,8 +286,18 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     }
   }
 
-  async uninstallPlugin(plugin: PluginInfo): Promise<void> {
+  async uninstallPlugin(plugin: PluginInfo): Promise<boolean> {
     const app = this.app as any;
+
+    const confirmed = await confirm(
+      this.app,
+      'Confirm uninstall',
+      `Are you sure you want to uninstall "${plugin.name}"?`,
+    );
+
+    if (!confirmed) {
+      return false;
+    }
 
     try {
       // First disable the plugin if it's enabled
@@ -257,13 +309,11 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       await app.plugins.uninstallPlugin(plugin.id);
       new obsidian.Notice(`Uninstalled: ${plugin.name}`);
 
-      // Close and reopen the modal to refresh the list
-      this.close();
-      setTimeout(() => {
-        new PluginManagerModal(this.app, this.plugin).open();
-      }, 100);
+      return true;
     } catch (error) {
       new obsidian.Notice(`Error uninstalling plugin: ${error.message}`);
+
+      return false;
     }
   }
 
