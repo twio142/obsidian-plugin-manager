@@ -68,9 +68,10 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     const enterHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.togglePlugin(selectedItem.item).then(() => {
           this.reopenModal();
+          this.close();
         });
       }
       return false;
@@ -80,7 +81,10 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
       if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
-        this.uninstallPlugin(selectedItem.item);
+        this.uninstallPlugin(selectedItem.item).then(() => {
+          this.reopenModal();
+          this.close();
+        });
       }
       return false;
     };
@@ -90,7 +94,6 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       const selectedItem = chooser.values[chooser.selectedItem];
       if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
         this.copyPluginId(selectedItem.item);
-        this.reopenModal();
       }
       return false;
     };
@@ -100,7 +103,6 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       const selectedItem = chooser.values[chooser.selectedItem];
       if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
         this.openPluginRepository(selectedItem.item);
-        this.reopenModal();
       }
       return false;
     };
