@@ -219,7 +219,8 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
       const textDiv = contentDiv.createDiv({ cls: 'pm-suggestion-text' });
       const titleDiv = textDiv.createDiv({ cls: 'pm-suggestion-title' });
       const nameSpan = titleDiv.createSpan({ cls: 'plugin-name' });
-      nameSpan.setText(plugin.name);
+      obsidian.renderResults(nameSpan, plugin.name, item.match);
+
       if (!plugin.enabled) {
         nameSpan.addClass('plugin-disabled');
       }

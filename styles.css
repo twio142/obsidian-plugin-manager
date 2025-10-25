@@ -43,3 +43,8 @@
   gap: 6px;
   --icon-size: var(--icon-xs);
 }
+
+.pm-suggestion-modal .suggestion-highlight {
+  font-weight: bold;
+  color: var(--text-accent);
+}

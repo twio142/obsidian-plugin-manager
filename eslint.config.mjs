@@ -5,7 +5,7 @@ import { antfu } from '@antfu/eslint-config';
 export default antfu({
   formatters: true,
   typescript: true,
-  ignores: ['*.md', '*.mjs'],
+  ignores: ['*.md', '*.mjs', 'node_modules', 'dist', 'build', 'coverage', '*.min.js', 'main.js'],
 }, {
   rules: {
     'style/semi': ['error', 'always'],
