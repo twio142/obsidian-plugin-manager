@@ -362,10 +362,10 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
         }
       } else {
         this.plugin.bratPluginCache = {};
-        const { pluginList, pluginSublistFrozenVersion } = brat.settings;
+        const { pluginList, pluginSubListFrozenVersion } = brat.settings;
         for (const i in pluginList) {
           const p = pluginList[i];
-          this.plugin.bratPluginCache[p] = pluginSublistFrozenVersion[i]?.repo;
+          this.plugin.bratPluginCache[p] = pluginSubListFrozenVersion[i]?.repo;
           if (p === plugin.id) {
             open(this.plugin.bratPluginCache[plugin.id]);
             found = true;
