@@ -29,6 +29,33 @@ export default class PluginManagerPlugin extends obsidian.Plugin {
       },
     });
 
+    this.addCommand({
+      id: 'check-for-updates',
+      name: 'Check for plugin updates',
+      callback: async () => {
+        new obsidian.Notice('Checking for plugin updates...');
+        await (this.app as any).plugins.checkForUpdates();
+        if ((this.app as any).plugins.plugins['obsidian42-brat']) {
+          (this.app as any).commands.executeCommandById('obsidian42-brat:checkForUpdatesAndDontUpdate');
+        }
+      },
+    });
+
+    this.addCommand({
+      id: 'update-all-plugins',
+      name: 'Update all plugins',
+      callback: async () => {
+        new obsidian.Notice('Updating all plugins...');
+        await (this.app as any).plugins.checkForUpdates();
+        for (const p of Object.values((this.app as any).plugins.updates) as any[]) {
+          await (this.app as any).plugins.installPlugin(p.repo, p.version, p.manifest);
+        }
+        if ((this.app as any).plugins.plugins['obsidian42-brat']) {
+          (this.app as any).commands.executeCommandById('obsidian42-brat:checkForUpdatesAndUpdate');
+        }
+      },
+    });
+
     // Add ribbon icon
     this.addRibbonIcon('puzzle', 'Plugin manager', () => {
       new PluginManagerModal(this.app, this).open();

@@ -19,6 +19,14 @@ Manage your Obsidian plugins with ease.
 | Copy plugin ID   | Ctrl/Cmd + C   |
 | Open plugin repository   | Ctrl/Cmd + O   |
 
+## Commands
+
+This plugin provides the following commands that can be accessed from the command palette (Cmd/Ctrl + P):
+
+- **Plugin Manager: Search plugins**: Opens the plugin manager modal to search and manage your plugins.
+- **Plugin Manager: Check for plugin updates**: Checks for available updates for all your installed plugins (including BRAT plugins).
+- **Plugin Manager: Update all plugins**: Updates all plugins that have an available update.
+
 ## Installation
 
 Install via BRAT or manually.
