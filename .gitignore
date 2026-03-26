@@ -16,3 +16,13 @@ main.js
 
 # Logs
 *.log
+
+# .claude
+.claude/
+
+# .gemini
+.gemini/
+
+# speckit
+.specify/scripts
+.specify/templates
