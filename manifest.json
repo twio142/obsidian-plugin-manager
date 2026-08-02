@@ -1,7 +1,7 @@
 {
   "id": "obsidian-plugin-manager",
   "name": "Plugin Manager",
-  "minAppVersion": "0.15.0",
+  "minAppVersion": "1.12.0",
   "description": "Manage your Obsidian plugins with ease. Lists all installed plugins in a fuzzy search modal and supports various actions with shortcuts.",
   "author": "twio142",
   "authorUrl": "https://github.com/twio142",
