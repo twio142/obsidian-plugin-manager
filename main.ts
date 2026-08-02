@@ -147,7 +147,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     const dHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.uninstallPlugin(selectedItem.item).then((ok) => {
           if (!ok)
             return;
@@ -161,7 +161,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     const cHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.copyPluginId(selectedItem.item);
       }
       return false;
@@ -170,7 +170,7 @@ class PluginManagerModal extends obsidian.FuzzySuggestModal<SuggestionItem> {
     const oHandler = (evt: KeyboardEvent) => {
       evt.preventDefault();
       const selectedItem = chooser.values[chooser.selectedItem];
-      if (selectedItem && 'id' in selectedItem.item && selectedItem.item.enabled) {
+      if (selectedItem && 'id' in selectedItem.item) {
         this.openPluginRepository(selectedItem.item);
       }
       return false;
